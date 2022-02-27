@@ -1,0 +1,7 @@
+# IDE
+.idea/
+
+.venv
+
+.env
+.env.db

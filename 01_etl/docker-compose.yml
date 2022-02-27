@@ -1,0 +1,10 @@
+version: '3.9'
+
+services:
+  elasic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+    ports:
+      - "9200:9200"
+    environment:
+      - "discovery.type=single-node"
+
