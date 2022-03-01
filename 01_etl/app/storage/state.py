@@ -11,13 +11,21 @@ class State:
     def __init__(self, storage: BaseStorage):
         self.storage = storage
 
+    def __getitem__(self, item):
+        return self.storage.retrieve_state()[item]
+
+    def __setitem__(self, key, value):
+        self.storage.save_state({
+            key: value
+        })
+
     def set_state(self, key: str, value) -> None:
         """Установить состояние для определённого ключа"""
         self.storage.save_state({
             key: value
         })
 
-    def get_state(self, key: str):
+    def get_state(self, key: str, default=None):
         """Получить состояние по определённому ключу"""
         current_state = self.storage.retrieve_state()
-        return current_state.get(key)
+        return current_state.get(key, default)

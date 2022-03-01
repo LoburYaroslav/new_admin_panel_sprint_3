@@ -3,9 +3,12 @@ from datetime import datetime
 
 import psycopg2
 from dotenv import load_dotenv
+from psycopg2.extras import DictCursor
+
 from etl_components.etl_process import EtlProcess
 from postgres_components.constants import TABLE_SPECS
-from psycopg2.extras import DictCursor
+from storage.state import State
+from storage.storage import JsonFileStorage
 
 load_dotenv('../.env')
 
@@ -19,26 +22,28 @@ dsl = {
 
 BATCH_SIZE = 3
 
-storage = {
-    'film_work': {
-        'offset': 0
-    }
-}
+storage = JsonFileStorage('./storage.json')
+state = State(storage)
+# todo: надо валидировать тут storage.json
 
 with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
     for i in [1, 2, 3]:
         for table_spec in TABLE_SPECS:
-            print(table_spec.table_name, storage[table_spec.table_name]['offset'])
+            print(table_spec.table_name, state[table_spec.table_name]['offset'])
 
             ids = EtlProcess.postgres_producer(
                 pg_conn=pg_conn,
                 table_spec=table_spec,
                 last_modified_dt=datetime(2020, 1, 1),
                 batch_limit=BATCH_SIZE,
-                batch_offset=storage[table_spec.table_name]['offset']
+                batch_offset=state[table_spec.table_name]['offset']
             )
             print(ids)
 
-            storage[table_spec.table_name]['offset'] += BATCH_SIZE
+            state[table_spec.table_name] = {
+                **state[table_spec.table_name],
+                'offset': state[table_spec.table_name]['offset'] + BATCH_SIZE
+            }
 
-print(storage)
+            print(state[table_spec.table_name]['offset'] + BATCH_SIZE)
+            print(state[table_spec.table_name]['offset'])
