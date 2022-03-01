@@ -7,7 +7,7 @@ from etl_components.etl_process import EtlProcess
 from postgres_components.constants import TABLE_SPECS
 from psycopg2.extras import DictCursor
 
-load_dotenv('../.env.db')
+load_dotenv('../.env')
 
 dsl = {
     'dbname': os.environ.get('DB_NAME'),
