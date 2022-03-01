@@ -47,6 +47,7 @@ class FilmWorkSpec(PostgresTableSpec):
                 SELECT id
                 FROM content.{cls.table_name}
                 WHERE modified >= %(modified)s
+                ORDER BY modified, id
                 OFFSET %(offset)s
                 LIMIT %(limit)s;
                 """,
