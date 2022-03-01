@@ -1,7 +1,7 @@
 """
 Здесь описан главный класс EtlProcess, реализующий весь ETL процесс.
 """
-from constants import MoviesDatabaseTableEnum
+from postgres_components.constants import MoviesDatabaseTableEnum
 
 
 class EtlProcess:
