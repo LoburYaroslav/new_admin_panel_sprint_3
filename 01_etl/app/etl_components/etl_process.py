@@ -3,6 +3,7 @@
 """
 from datetime import datetime
 
+from lib.logger import logger
 from postgres_components.table_spec import AbstractPostgresTableSpec
 from psycopg2.extensions import connection
 
@@ -19,6 +20,7 @@ class EtlProcess:
             batch_offset: int,
     ):
         """Возвращает идентификаторы кинопроизведений связанных с изменившимися сущностями"""
+        logger.info(f'RUN postgres_producer for {table_spec.table_name}')
 
         return table_spec.get_film_work_ids_by_modified_rows(
             pg_conn,
