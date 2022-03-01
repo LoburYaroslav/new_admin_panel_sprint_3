@@ -1,17 +1,31 @@
 """
 Здесь описан главный класс EtlProcess, реализующий весь ETL процесс.
 """
-from postgres_components.constants import MoviesDatabaseTableEnum
+from datetime import datetime
+
+from postgres_components.table_spec import AbstractPostgresTableSpec
+from psycopg2.extensions import connection
 
 
 class EtlProcess:
     """Класс реализующий ETL процесс"""
 
-    def __init__(self):
-        ...
+    @staticmethod
+    def postgres_producer(
+            pg_conn: connection,
+            table_spec: AbstractPostgresTableSpec,
+            last_modified_dt: datetime,
+            batch_limit: int,
+            batch_offset: int,
+    ):
+        """Возвращает идентификаторы кинопроизведений связанных с изменившимися сущностями"""
 
-    def postgres_producer(self, table_name: MoviesDatabaseTableEnum):
-        """Ходит в отдельные таблицы бд movies_database и вытаскивает изменившуюся информацию"""
+        return table_spec.get_film_work_ids_by_modified_rows(
+            pg_conn,
+            last_modified_dt=last_modified_dt,
+            limit=batch_limit,
+            offset=batch_offset
+        )
 
     def postgres_enricher(self):
         """При необходимости обогащает данными таблицы genre и person"""

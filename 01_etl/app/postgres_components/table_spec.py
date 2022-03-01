@@ -9,7 +9,7 @@ from typing import Tuple
 from psycopg2.extensions import connection
 
 
-class PostgresTableSpec(ABC):
+class AbstractPostgresTableSpec(ABC):
 
     @property
     @abstractmethod
@@ -30,7 +30,7 @@ class PostgresTableSpec(ABC):
         """
 
 
-class FilmWorkSpec(PostgresTableSpec):
+class FilmWorkSpec(AbstractPostgresTableSpec):
     table_name = 'film_work'
 
     @classmethod
