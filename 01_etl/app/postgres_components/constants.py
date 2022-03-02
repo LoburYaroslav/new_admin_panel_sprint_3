@@ -1,6 +1,6 @@
 from enum import Enum
 
-from postgres_components.table_spec import FilmWorkSpec
+from postgres_components.table_spec import FilmWorkSpec, GenreSpec, PersonFilmWorkSpec, PersonSpec
 
 
 class MoviesDatabaseTableEnum(Enum):
@@ -15,4 +15,7 @@ class MoviesDatabaseTableEnum(Enum):
 
 TABLE_SPECS = [
     FilmWorkSpec,
+    PersonFilmWorkSpec,
+    PersonSpec,
+    GenreSpec
 ]

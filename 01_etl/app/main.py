@@ -18,32 +18,58 @@ dsl = {
     'password': os.environ.get('DB_PASSWORD'),
     'host': os.environ.get('DB_HOST', '127.0.0.1'),
     'port': os.environ.get('DB_PORT', 5432),
+    'options': "-c search_path=content,public"
 }
 
-BATCH_SIZE = 3
+BATCH_SIZE = 5
 
 storage = JsonFileStorage('./storage.json')
 state = State(storage)
 # todo: надо валидировать тут storage.json
 
 with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
-    for i in [1, 2, 3]:
+    for i in [1, ]:
         for table_spec in TABLE_SPECS:
-            print(table_spec.table_name, state[table_spec.table_name]['offset'])
+            print(table_spec.table_name, state[table_spec.table_name]['producer_offset'])
 
-            ids = EtlProcess.postgres_producer(
+            modified_row_ids = EtlProcess.postgres_producer(
                 pg_conn=pg_conn,
                 table_spec=table_spec,
                 last_modified_dt=datetime(2020, 1, 1),
                 batch_limit=BATCH_SIZE,
-                batch_offset=state[table_spec.table_name]['offset']
+                batch_offset=state[table_spec.table_name]['producer_offset']
             )
-            print(ids)
+            print('modified_row_ids', modified_row_ids)
 
             state[table_spec.table_name] = {
                 **state[table_spec.table_name],
-                'offset': state[table_spec.table_name]['offset'] + BATCH_SIZE
+                'producer_offset': state[table_spec.table_name]['producer_offset'] + BATCH_SIZE
             }
 
-            print(state[table_spec.table_name]['offset'] + BATCH_SIZE)
-            print(state[table_spec.table_name]['offset'])
+            while True:
+                film_work_ids = EtlProcess.postgres_enricher(
+                    pg_conn=pg_conn,
+                    table_spec=table_spec,
+                    modified_row_ids=modified_row_ids,
+                    batch_limit=BATCH_SIZE,
+                    batch_offset=state[table_spec.table_name]['enricher_offset']
+                )
+                print('film_work_ids ', film_work_ids)
+
+                if film_work_ids:
+                    state[table_spec.table_name] = {
+                        **state[table_spec.table_name],
+                        'enricher_offset': state[table_spec.table_name]['enricher_offset'] + BATCH_SIZE
+                    }
+                    continue
+
+                state[table_spec.table_name] = {
+                    **state[table_spec.table_name],
+                    'enricher_offset': 0
+                }
+                break
+
+        state[table_spec.table_name] = {
+            **state[table_spec.table_name],
+            'producer_offset': 0
+        }
