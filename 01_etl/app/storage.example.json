@@ -1,6 +1,22 @@
 {
   "film_work": {
-    "offset": 0,
+    "producer_offset": 0,
+    "enricher_offset": 0,
+    "last_modified_dt": "2022-03-02T00:01:01.024425"
+  },
+  "person_film_work": {
+    "producer_offset": 0,
+    "enricher_offset": 0,
+    "last_modified_dt": "2022-03-02T00:01:01.024425"
+  },
+  "person": {
+    "producer_offset": 0,
+    "enricher_offset": 0,
+    "last_modified_dt": "2022-03-02T00:01:01.024425"
+  },
+  "genre": {
+    "producer_offset": 0,
+    "enricher_offset": 0,
     "last_modified_dt": "2022-03-02T00:01:01.024425"
   }
 }

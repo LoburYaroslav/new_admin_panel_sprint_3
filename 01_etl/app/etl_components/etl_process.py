@@ -3,11 +3,13 @@
 """
 from collections import defaultdict
 from datetime import datetime
-from typing import Tuple
+from typing import Iterable, List, Tuple
 
+from elasticsearch import Elasticsearch, helpers
 from psycopg2.extensions import connection
+from settings import ES_HOST, ES_INDEX, ES_PORT
 
-from etl_components.constants import merged_data_template_factory
+from etl_components.utils import merged_data_template_factory
 from lib.logger import logger
 from postgres_components.constants import PersonRoleEnum
 from postgres_components.table_spec import AbstractPostgresTableSpec
@@ -43,7 +45,7 @@ class EtlProcess:
             batch_offset: int,
     ):
         """Возвращает film_work.id для измененных записей из таблиц genre и person"""
-        logger.info(f'RUN postgres_enricher for {table_spec.table_name}')
+        logger.info(f'RUN postgres_enricher for {table_spec.table_name}: {len(modified_row_ids)} will be enriched')
 
         return table_spec.get_film_work_ids_by_modified_row_ids(
             pg_conn,
@@ -55,7 +57,7 @@ class EtlProcess:
     @staticmethod
     def postgres_merger(pg_conn: connection, film_work_ids: Tuple[str]):
         """Собирает и мержит данные для последующей трансформации и отправки в Elastic"""
-        logger.info('RUN postgres_merger')
+        logger.info(f'RUN postgres_merger: {len(film_work_ids)} will be merged')
         with pg_conn.cursor() as cur:
             query = cur.mogrify(
                 """
@@ -96,11 +98,17 @@ class EtlProcess:
                     merged_data[fw_id]['genre'].append(item['name'])
 
                 if item['role'] == PersonRoleEnum.ACTOR.value:
-                    merged_data[fw_id]['actors'].append(item['full_name'])
+                    merged_data[fw_id]['actors'].append({
+                        'id': item['id'],
+                        'name': item['full_name']
+                    })
                     merged_data[fw_id]['actors_names'].append(item['full_name'])
 
                 if item['role'] == PersonRoleEnum.WRITER.value:
-                    merged_data[fw_id]['actors'].append(item['full_name'])
+                    merged_data[fw_id]['writers'].append({
+                        'id': item['id'],
+                        'name': item['full_name']
+                    })
                     merged_data[fw_id]['writers_names'].append(item['full_name'])
 
                 if item['role'] == PersonRoleEnum.DIRECTOR.value:
@@ -109,8 +117,23 @@ class EtlProcess:
             return merged_data.values()
 
     @staticmethod
-    def transform(pg_data: Tuple[dict]):
+    def transform(merged_data: Iterable[dict]) -> List[dict]:  # todo: точнее типизировать merged_data
         """Преобразует входящие из postgres данные в вид подходящий для запроса в Elastic"""
+        logger.info(f'RUN transform: {len(merged_data)} will be transformed')
+        actions = [
+            {
+                "_index": ES_INDEX,
+                "_id": item['id'],
+                "_source": item
+            }
+            for item in merged_data
+        ]
+        return actions
 
-    def elasticsearch_loader(self):
+    @staticmethod
+    def elasticsearch_loader(actions: List[dict]):
         """Отправляет запрос в Elastic"""
+        logger.info(f'RUN elasticsearch_loader: {len(actions)} will be send')
+
+        es_client = Elasticsearch(f'{ES_HOST}:{ES_PORT}')
+        helpers.bulk(es_client, actions)
