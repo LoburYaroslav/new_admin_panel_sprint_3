@@ -78,7 +78,6 @@ class PostgresTableSpec(AbstractPostgresTableSpec):
                 """,
                 {'modified': last_modified_dt, 'limit': limit, 'offset': offset}
             )
-            print(query)
             cur.execute(query)
 
             return tuple(i[0] for i in cur.fetchall())
@@ -106,7 +105,6 @@ class PostgresTableSpec(AbstractPostgresTableSpec):
                     """,
                 {'modified': modified_row_ids, 'limit': limit, 'offset': offset}
             )
-            print(query)
             cur.execute(query)
 
             return tuple(i[0] for i in cur.fetchall())

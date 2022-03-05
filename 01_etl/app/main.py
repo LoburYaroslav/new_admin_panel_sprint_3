@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from psycopg2.extras import DictCursor
 
 from etl_components.etl_process import EtlProcess
+from lib.logger import logger
 from postgres_components.constants import TABLE_SPECS
 from storage.state import State
 from storage.storage import JsonFileStorage
@@ -21,7 +22,7 @@ dsl = {
     'options': "-c search_path=content,public"
 }
 
-BATCH_SIZE = 5
+BATCH_SIZE = 50
 
 storage = JsonFileStorage('./storage.json')
 state = State(storage)
@@ -39,7 +40,7 @@ with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
                 batch_limit=BATCH_SIZE,
                 batch_offset=state[table_spec.table_name]['producer_offset']
             )
-            print('modified_row_ids', modified_row_ids)
+            logger.info(f'modified_row_ids: {modified_row_ids}')
 
             state[table_spec.table_name] = {
                 **state[table_spec.table_name],
@@ -54,20 +55,22 @@ with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
                     batch_limit=BATCH_SIZE,
                     batch_offset=state[table_spec.table_name]['enricher_offset']
                 )
-                print('film_work_ids ', film_work_ids)
+                logger.info(f'film_work_ids: {film_work_ids}')
 
-                if film_work_ids:
+                if not film_work_ids:
                     state[table_spec.table_name] = {
                         **state[table_spec.table_name],
-                        'enricher_offset': state[table_spec.table_name]['enricher_offset'] + BATCH_SIZE
+                        'enricher_offset': 0
                     }
-                    continue
+                    break
+
+                merged_data = EtlProcess.postgres_merger(pg_conn=pg_conn, film_work_ids=film_work_ids)
 
                 state[table_spec.table_name] = {
                     **state[table_spec.table_name],
-                    'enricher_offset': 0
+                    'enricher_offset': state[table_spec.table_name]['enricher_offset'] + BATCH_SIZE
                 }
-                break
+                continue
 
         state[table_spec.table_name] = {
             **state[table_spec.table_name],

@@ -49,8 +49,35 @@ class EtlProcess:
             offset=batch_offset
         )
 
-    def postgres_merger(self):
-        """Вмерживает данные для последующей трансформации и отправки в Elastic"""
+    @staticmethod
+    def postgres_merger(pg_conn: connection, film_work_ids: Tuple[str]):
+        """Собирает данные для последующей трансформации и отправки в Elastic"""
+        logger.info('RUN postgres_merger')
+        with pg_conn.cursor() as cur:
+            query = cur.mogrify(
+                """
+                SELECT
+                    fw.id as fw_id,
+                    fw.title,
+                    fw.description,
+                    fw.rating,
+                    fw.type,
+                    fw.created,
+                    fw.modified,
+                    pfw.role,
+                    p.id,
+                    p.full_name,
+                    g.name
+                FROM film_work fw
+                LEFT JOIN person_film_work pfw ON pfw.film_work_id = fw.id
+                LEFT JOIN person p ON p.id = pfw.person_id
+                LEFT JOIN genre_film_work gfw ON gfw.film_work_id = fw.id
+                LEFT JOIN genre g ON g.id = gfw.genre_id
+                WHERE fw.id IN %(film_work_ids)s;
+                """,
+                {'film_work_ids': film_work_ids, }
+            )
+            cur.execute(query)
 
     def transform(self):
         """Преобразует входящие из postgres данные в вид подходящий для запроса в Elastic"""
