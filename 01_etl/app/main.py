@@ -41,6 +41,8 @@ with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
                 batch_offset=state[table_spec.table_name]['producer_offset']
             )
             logger.info(f'modified_row_ids: {modified_row_ids}')
+            if not modified_row_ids:
+                continue
 
             state[table_spec.table_name] = {
                 **state[table_spec.table_name],

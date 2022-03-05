@@ -1,12 +1,15 @@
 """
 Здесь описан главный класс EtlProcess, реализующий весь ETL процесс.
 """
+from collections import defaultdict
 from datetime import datetime
 from typing import Tuple
 
 from psycopg2.extensions import connection
 
+from etl_components.constants import merged_data_template_factory
 from lib.logger import logger
+from postgres_components.constants import PersonRoleEnum
 from postgres_components.table_spec import AbstractPostgresTableSpec
 
 
@@ -51,7 +54,7 @@ class EtlProcess:
 
     @staticmethod
     def postgres_merger(pg_conn: connection, film_work_ids: Tuple[str]):
-        """Собирает данные для последующей трансформации и отправки в Elastic"""
+        """Собирает и мержит данные для последующей трансформации и отправки в Elastic"""
         logger.info('RUN postgres_merger')
         with pg_conn.cursor() as cur:
             query = cur.mogrify(
@@ -79,7 +82,34 @@ class EtlProcess:
             )
             cur.execute(query)
 
-    def transform(self):
+            raw_data = tuple(dict(i) for i in cur.fetchall())
+            merged_data = defaultdict(merged_data_template_factory)
+
+            for item in raw_data:  # todo: тут можно валидировать данные из базы и логировать ошибки
+                fw_id = item['fw_id']
+                merged_data[fw_id]['id'] = fw_id
+                merged_data[fw_id]['imdb_rating'] = item['rating']
+                merged_data[fw_id]['title'] = item['title']
+                merged_data[fw_id]['description'] = item['description']
+
+                if item['name'] not in merged_data[fw_id]['genre']:
+                    merged_data[fw_id]['genre'].append(item['name'])
+
+                if item['role'] == PersonRoleEnum.ACTOR.value:
+                    merged_data[fw_id]['actors'].append(item['full_name'])
+                    merged_data[fw_id]['actors_names'].append(item['full_name'])
+
+                if item['role'] == PersonRoleEnum.WRITER.value:
+                    merged_data[fw_id]['actors'].append(item['full_name'])
+                    merged_data[fw_id]['writers_names'].append(item['full_name'])
+
+                if item['role'] == PersonRoleEnum.DIRECTOR.value:
+                    merged_data[fw_id]['director'].append(item['full_name'])
+
+            return merged_data.values()
+
+    @staticmethod
+    def transform(pg_data: Tuple[dict]):
         """Преобразует входящие из postgres данные в вид подходящий для запроса в Elastic"""
 
     def elasticsearch_loader(self):
