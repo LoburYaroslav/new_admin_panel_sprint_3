@@ -11,6 +11,7 @@ class PersonRoleEnum(Enum):
     WRITER = 'writer'
 
 
+# по этим таблицам осуществляется обход и дальнейшая загрузка в elastic
 TABLE_SPECS = [
     FilmWorkSpec,
     PersonFilmWorkSpec,
