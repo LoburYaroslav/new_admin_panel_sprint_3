@@ -97,21 +97,24 @@ class EtlProcess:
                 if item['name'] not in merged_data[fw_id]['genre']:
                     merged_data[fw_id]['genre'].append(item['name'])
 
-                if item['role'] == PersonRoleEnum.ACTOR.value:
+                if item['role'] == PersonRoleEnum.ACTOR.value \
+                        and item['id'] not in [i['id'] for i in merged_data[fw_id]['actors']]:
                     merged_data[fw_id]['actors'].append({
                         'id': item['id'],
                         'name': item['full_name']
                     })
                     merged_data[fw_id]['actors_names'].append(item['full_name'])
 
-                if item['role'] == PersonRoleEnum.WRITER.value:
+                if item['role'] == PersonRoleEnum.WRITER.value \
+                        and item['id'] not in [i['id'] for i in merged_data[fw_id]['writers']]:
                     merged_data[fw_id]['writers'].append({
                         'id': item['id'],
                         'name': item['full_name']
                     })
                     merged_data[fw_id]['writers_names'].append(item['full_name'])
 
-                if item['role'] == PersonRoleEnum.DIRECTOR.value:
+                if item['role'] == PersonRoleEnum.DIRECTOR.value \
+                        and item['full_name'] not in [name for name in merged_data[fw_id]['director']]:
                     merged_data[fw_id]['director'].append(item['full_name'])
 
             return merged_data.values()
