@@ -3,7 +3,7 @@
 """
 from collections import defaultdict
 from datetime import datetime
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, Union
 
 from elasticsearch import Elasticsearch, helpers
 from psycopg2.extensions import connection
@@ -22,7 +22,7 @@ class EtlProcess:
     def postgres_producer(
             pg_conn: connection,
             table_spec: AbstractPostgresTableSpec,
-            last_modified_dt: datetime,
+            last_modified_dt: Union[datetime, str],  # либо дата, либо строка с датой в формате iso
             batch_limit: int,
             batch_offset: int,
     ):

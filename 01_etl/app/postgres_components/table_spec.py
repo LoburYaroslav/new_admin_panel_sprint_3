@@ -1,6 +1,6 @@
 """
-Здесь описаны спецификации для получения изменившихся записей из таблиц.
-А также спецификация для формирования структуры подходящей для отправки в Elastic.
+Здесь описаны спецификации таблиц из БД movies_database.
+В них описаны методы для получения изменившихся записей из таблиц.
 """
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -53,7 +53,7 @@ class AbstractPostgresTableSpec(ABC):
         """
 
 
-class PostgresTableSpec(AbstractPostgresTableSpec):
+class PostgresTableSpecMixin(AbstractPostgresTableSpec):
     table_name: str = None
     join_clause: str = None
     film_work_id_field: str = 'film_work_id'
@@ -110,9 +110,11 @@ class PostgresTableSpec(AbstractPostgresTableSpec):
             return tuple(i[0] for i in cur.fetchall())
 
 
-class FilmWorkSpec(PostgresTableSpec):
+class FilmWorkSpec(PostgresTableSpecMixin):
     table_name = 'film_work'
 
+    # переопределил тк для таблицы film_work сразу возвращаются записи с id кинопроизведений
+    # и в дальнейшем обогащении не нуждается
     @classmethod
     def get_film_work_ids_by_modified_row_ids(
             cls,
@@ -121,7 +123,7 @@ class FilmWorkSpec(PostgresTableSpec):
             limit: int,
             offset: int
     ) -> Tuple[str]:
-        return modified_row_ids
+        return modified_row_ids[offset:offset + limit]
 
 
 class PersonFilmWorkSpec(AbstractPostgresTableSpec):
@@ -161,16 +163,16 @@ class PersonFilmWorkSpec(AbstractPostgresTableSpec):
             limit: int,
             offset: int
     ) -> Tuple[str]:
-        return modified_row_ids
+        return modified_row_ids[offset:offset + limit]
 
 
-class PersonSpec(PostgresTableSpec):
+class PersonSpec(PostgresTableSpecMixin):
     table_name = 'person'
     join_clause = 'JOIN person_film_work ON person_film_work.person_id = person.id'
     film_work_id_field = 'film_work_id'
 
 
-class GenreSpec(PostgresTableSpec):
+class GenreSpec(PostgresTableSpecMixin):
     table_name = 'genre'
     join_clause = 'JOIN genre_film_work ON genre_film_work.genre_id = genre.id'
     film_work_id_field = 'film_work_id'

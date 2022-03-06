@@ -19,7 +19,7 @@ dsl = {
     'options': "-c search_path=content,public"
 }
 
-BATCH_SIZE = 10
+BATCH_SIZE = 2000
 
 storage = JsonFileStorage('./storage.json')
 state = State(storage)
@@ -29,22 +29,24 @@ with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
     while True:
         for table_spec in TABLE_SPECS:
             while True:
-                print(table_spec.table_name, state[table_spec.table_name]['producer_offset'])
+                current_table_name = table_spec.table_name
+                logger.info(f'Current table: {current_table_name}')
 
                 modified_row_ids = EtlProcess.postgres_producer(
                     pg_conn,
                     table_spec,
-                    last_modified_dt=datetime(2020, 1, 1),
+                    last_modified_dt=state[current_table_name]['last_modified_dt'],
                     batch_limit=BATCH_SIZE,
-                    batch_offset=state[table_spec.table_name]['producer_offset']
+                    batch_offset=state[current_table_name]['producer_offset']
                 )
                 logger.info(f'modified_row_ids: {modified_row_ids}')
 
                 if not modified_row_ids:
-                    logger.info(f'Table {table_spec.table_name} has been loaded to elastic')
-                    state[table_spec.table_name] = {
-                        **state[table_spec.table_name],
-                        'producer_offset': 0  # todo: и дату обновить
+                    logger.info(f'Table {current_table_name} has been loaded to elastic')
+                    state[current_table_name] = {
+                        **state[current_table_name],
+                        'last_modified_dt': datetime.now().isoformat(),
+                        'producer_offset': 0
                     }
                     break
 
@@ -54,13 +56,13 @@ with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
                         table_spec,
                         modified_row_ids,
                         batch_limit=BATCH_SIZE,
-                        batch_offset=state[table_spec.table_name]['enricher_offset']
+                        batch_offset=state[current_table_name]['enricher_offset']
                     )
                     logger.info(f'film_work_ids: {film_work_ids}')
 
                     if not film_work_ids:
-                        state[table_spec.table_name] = {
-                            **state[table_spec.table_name],
+                        state[current_table_name] = {
+                            **state[current_table_name],
                             'enricher_offset': 0
                         }
                         break
@@ -69,18 +71,18 @@ with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
                     transformed_data = EtlProcess.transform(merged_data)
                     EtlProcess.elasticsearch_loader(transformed_data)
 
-                    state[table_spec.table_name] = {
-                        **state[table_spec.table_name],
-                        'enricher_offset': state[table_spec.table_name]['enricher_offset'] + BATCH_SIZE
+                    state[current_table_name] = {
+                        **state[current_table_name],
+                        'enricher_offset': state[current_table_name]['enricher_offset'] + BATCH_SIZE
                     }
                     continue
 
-                state[table_spec.table_name] = {
-                    **state[table_spec.table_name],
-                    'producer_offset': state[table_spec.table_name]['producer_offset'] + BATCH_SIZE
+                state[current_table_name] = {
+                    **state[current_table_name],
+                    'producer_offset': state[current_table_name]['producer_offset'] + BATCH_SIZE
                 }
 
-            state[table_spec.table_name] = {
-                **state[table_spec.table_name],
+            state[current_table_name] = {
+                **state[current_table_name],
                 'producer_offset': 0
             }
