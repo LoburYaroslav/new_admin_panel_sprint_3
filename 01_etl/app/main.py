@@ -20,15 +20,15 @@ dsl = {
     'options': "-c search_path=content,public"
 }
 
-BATCH_SIZE = 2000
+BATCH_SIZE = 500
 
 storage = JsonFileStorage('./storage.json')
 state = State(storage)
 
 
-# todo: надо валидировать тут storage.json
+# todo: мб надо валидировать тут storage.json
 
-@backoff(psycopg2.DatabaseError)
+@backoff(psycopg2.OperationalError)
 def run_etl():
     with psycopg2.connect(**dsl, cursor_factory=DictCursor) as pg_conn:
         while True:

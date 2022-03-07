@@ -120,7 +120,7 @@ class EtlProcess:
             return merged_data.values()
 
     @staticmethod
-    def transform(merged_data: Iterable[dict]) -> List[dict]:  # todo: точнее типизировать merged_data
+    def transform(merged_data: Iterable[dict]) -> List[dict]:  # todo: мб точнее типизировать merged_data
         """Преобразует входящие из postgres данные в вид подходящий для запроса в Elastic"""
         logger.info(f'RUN transform: {len(merged_data)} will be transformed')
         actions = [
