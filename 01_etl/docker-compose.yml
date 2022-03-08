@@ -1,10 +1,30 @@
 version: '3.9'
 
 services:
-  elasic:
+  app:
+    build: .
+    env_file:
+      - ./app/.env
+    depends_on:
+      - db
+      - elastic
+
+  db:
+    image: postgres:13.0-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+      - ./init_db:/docker-entrypoint-initdb.d
+    env_file:
+      - ./app/.env.db
+
+  elastic:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.7.0
     ports:
       - "9200:9200"
     environment:
       - "discovery.type=single-node"
 
+volumes:
+  postgres_data:
