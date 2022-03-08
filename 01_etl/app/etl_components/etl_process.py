@@ -7,8 +7,10 @@ from typing import Iterable, List, Tuple, Union
 
 from elasticsearch import Elasticsearch, helpers
 from psycopg2.extensions import connection
-from settings import ES_HOST, ES_INDEX, ES_PORT
+from pydantic import ValidationError
+from settings import settings
 
+from etl_components.models import PgMergedData
 from etl_components.utils import merged_data_template_factory
 from lib.logger import logger
 from postgres_components.constants import PersonRoleEnum
@@ -67,8 +69,6 @@ class EtlProcess:
                     fw.description,
                     fw.rating,
                     fw.type,
-                    fw.created,
-                    fw.modified,
                     pfw.role,
                     p.id,
                     p.full_name,
@@ -89,43 +89,49 @@ class EtlProcess:
 
             for item in raw_data:  # todo: тут можно валидировать данные из базы и логировать ошибки
                 fw_id = item['fw_id']
+                try:
+                    valid_item = PgMergedData(**item)
+                except ValidationError:
+                    logger.exception(f'ValidationError for film {fw_id}')
+                    continue
+
                 merged_data[fw_id]['id'] = fw_id
-                merged_data[fw_id]['imdb_rating'] = item['rating']
-                merged_data[fw_id]['title'] = item['title']
-                merged_data[fw_id]['description'] = item['description']
+                merged_data[fw_id]['imdb_rating'] = valid_item.rating
+                merged_data[fw_id]['title'] = valid_item.title
+                merged_data[fw_id]['description'] = valid_item.description
 
-                if item['name'] not in merged_data[fw_id]['genre']:
-                    merged_data[fw_id]['genre'].append(item['name'])
+                if valid_item.name not in merged_data[fw_id]['genre']:
+                    merged_data[fw_id]['genre'].append(valid_item.name)
 
-                if item['role'] == PersonRoleEnum.ACTOR.value \
-                        and item['id'] not in [i['id'] for i in merged_data[fw_id]['actors']]:
+                if valid_item.role == PersonRoleEnum.ACTOR.value \
+                        and valid_item.id not in [i['id'] for i in merged_data[fw_id]['actors']]:
                     merged_data[fw_id]['actors'].append({
-                        'id': item['id'],
-                        'name': item['full_name']
+                        'id': valid_item.id,
+                        'name': valid_item.full_name
                     })
-                    merged_data[fw_id]['actors_names'].append(item['full_name'])
+                    merged_data[fw_id]['actors_names'].append(valid_item.full_name)
 
-                if item['role'] == PersonRoleEnum.WRITER.value \
-                        and item['id'] not in [i['id'] for i in merged_data[fw_id]['writers']]:
+                if valid_item.role == PersonRoleEnum.WRITER.value \
+                        and valid_item.id not in [i['id'] for i in merged_data[fw_id]['writers']]:
                     merged_data[fw_id]['writers'].append({
-                        'id': item['id'],
-                        'name': item['full_name']
+                        'id': valid_item.id,
+                        'name': valid_item.full_name
                     })
-                    merged_data[fw_id]['writers_names'].append(item['full_name'])
+                    merged_data[fw_id]['writers_names'].append(valid_item.full_name)
 
-                if item['role'] == PersonRoleEnum.DIRECTOR.value \
-                        and item['full_name'] not in [name for name in merged_data[fw_id]['director']]:
-                    merged_data[fw_id]['director'].append(item['full_name'])
+                if valid_item.role == PersonRoleEnum.DIRECTOR.value \
+                        and valid_item.full_name not in [name for name in merged_data[fw_id]['director']]:
+                    merged_data[fw_id]['director'].append(valid_item.full_name)
 
             return merged_data.values()
 
     @staticmethod
-    def transform(merged_data: Iterable[dict]) -> List[dict]:  # todo: мб точнее типизировать merged_data
+    def transform(merged_data: Iterable[dict]) -> List[dict]:
         """Преобразует входящие из postgres данные в вид подходящий для запроса в Elastic"""
         logger.info(f'RUN transform: {len(merged_data)} will be transformed')
         actions = [
             {
-                "_index": ES_INDEX,
+                "_index": settings.ES_INDEX,
                 "_id": item['id'],
                 "_source": item
             }
@@ -138,5 +144,5 @@ class EtlProcess:
         """Отправляет запрос в Elastic"""
         logger.info(f'RUN elasticsearch_loader: {len(actions)} will be send')
 
-        es_client = Elasticsearch(f'{ES_HOST}:{ES_PORT}')
+        es_client = Elasticsearch(f'{settings.ES_HOST}:{settings.ES_PORT}')
         helpers.bulk(es_client, actions)

@@ -2,7 +2,7 @@ from datetime import datetime
 
 import psycopg2
 from psycopg2.extras import DictCursor
-from settings import DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER
+from settings import settings
 
 from etl_components.etl_process import EtlProcess
 from lib.logger import logger
@@ -12,11 +12,11 @@ from storage.state import State
 from storage.storage import JsonFileStorage
 
 dsl = {
-    'dbname': DB_NAME,
-    'user': DB_USER,
-    'password': DB_PASSWORD,
-    'host': DB_HOST,
-    'port': DB_PORT,
+    'dbname': settings.DB_NAME,
+    'user': settings.DB_USER,
+    'password': settings.DB_PASSWORD,
+    'host': settings.DB_HOST,
+    'port': settings.DB_PORT,
     'options': "-c search_path=content,public"
 }
 
@@ -25,8 +25,6 @@ BATCH_SIZE = 500
 storage = JsonFileStorage('./storage.json')
 state = State(storage)
 
-
-# todo: мб надо валидировать тут storage.json
 
 @backoff(psycopg2.OperationalError)
 def run_etl():

@@ -1,17 +1,18 @@
-import os
+from typing import Union
 
-from dotenv import load_dotenv
+from pydantic import BaseSettings
 
-load_dotenv('../.env')
 
-# DB
-DB_NAME = os.environ.get('DB_NAME')
-DB_USER = os.environ.get('DB_USER')
-DB_PASSWORD = os.environ.get('DB_PASSWORD')
-DB_HOST = os.environ.get('DB_HOST', '127.0.0.1')
-DB_PORT = os.environ.get('DB_PORT', 5432)
+class Settings(BaseSettings):
+    DB_NAME = 'movies_database'
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_HOST: str = '127.0.0.1'
+    DB_PORT: Union[int, str] = 5432
 
-# ES
-ES_HOST = os.environ.get('ES_HOST', '127.0.0.1')
-ES_PORT = os.environ.get('ES_PORT', 9200)
-ES_INDEX = os.environ.get('ES_INDEX', 'movies')
+    ES_HOST: str = '127.0.0.1'
+    ES_PORT: Union[int, str] = 9200
+    ES_INDEX: str = 'movies'
+
+
+settings = Settings(_env_file='../.env', _env_file_encoding='utf-8')

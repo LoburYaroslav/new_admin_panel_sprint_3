@@ -1,6 +1,6 @@
-python-dotenv==0.19
 psycopg2~=2.9
 pre-commit~=2.15
 flake8~=4.0
 isort~=5.10
 elasticsearch==7.17.0
+pydantic==1.9.0
