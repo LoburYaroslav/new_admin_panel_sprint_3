@@ -1,6 +1,7 @@
 """
 Здесь описан главный класс EtlProcess, реализующий весь ETL процесс.
 """
+from abc import abstractmethod
 from collections import defaultdict
 from datetime import datetime
 from typing import Iterable, List, Tuple, Union
@@ -18,7 +19,7 @@ from postgres_components.table_spec import AbstractPostgresTableSpec
 
 
 class EtlProcess:
-    """Класс реализующий ETL процесс"""
+    """Общий класс реализующий ETL процесс"""
 
     @staticmethod
     def postgres_producer(
@@ -37,6 +38,54 @@ class EtlProcess:
             limit=batch_limit,
             offset=batch_offset
         )
+
+    @staticmethod
+    @abstractmethod
+    def postgres_enricher(
+            pg_conn: connection,
+            table_spec: AbstractPostgresTableSpec,
+            modified_row_ids: Tuple[str],
+            batch_limit: int,
+            batch_offset: int,
+    ):
+        """
+        Обогащает записи данными из many-to-many таблиц при необходимости
+        Для каждого ETL процесса этот метод уникальный
+        """
+
+    @staticmethod
+    @abstractmethod
+    def postgres_merger(pg_conn: connection, film_work_ids: Tuple[str]):
+        """
+        Собирает и мержит данные для последующей трансформации и отправки в Elastic
+        Для каждого ETL процесса этот метод уникальный
+        """
+
+    @staticmethod
+    def transform(merged_data: Iterable[dict], index_name: str) -> List[dict]:
+        """Преобразует входящие из postgres данные в вид подходящий для запроса в Elastic"""
+        logger.info(f'RUN transform: {len(merged_data)} will be transformed')
+        actions = [
+            {
+                "_index": index_name,
+                "_id": item['id'],
+                "_source": item
+            }
+            for item in merged_data
+        ]
+        return actions
+
+    @staticmethod
+    def elasticsearch_loader(actions: List[dict]):
+        """Отправляет запрос в Elastic"""
+        logger.info(f'RUN elasticsearch_loader: {len(actions)} will be send')
+
+        es_client = Elasticsearch(f'{settings.ES_HOST}:{settings.ES_PORT}')
+        helpers.bulk(es_client, actions)
+
+
+class EtlFilmWorkProcess(EtlProcess):
+    """Класс реализующий ETL процесс для загрузки фильмов"""
 
     @staticmethod
     def postgres_enricher(
@@ -124,25 +173,3 @@ class EtlProcess:
                     merged_data[fw_id]['director'].append(valid_item.full_name)
 
             return merged_data.values()
-
-    @staticmethod
-    def transform(merged_data: Iterable[dict]) -> List[dict]:
-        """Преобразует входящие из postgres данные в вид подходящий для запроса в Elastic"""
-        logger.info(f'RUN transform: {len(merged_data)} will be transformed')
-        actions = [
-            {
-                "_index": settings.ES_INDEX,
-                "_id": item['id'],
-                "_source": item
-            }
-            for item in merged_data
-        ]
-        return actions
-
-    @staticmethod
-    def elasticsearch_loader(actions: List[dict]):
-        """Отправляет запрос в Elastic"""
-        logger.info(f'RUN elasticsearch_loader: {len(actions)} will be send')
-
-        es_client = Elasticsearch(f'{settings.ES_HOST}:{settings.ES_PORT}')
-        helpers.bulk(es_client, actions)

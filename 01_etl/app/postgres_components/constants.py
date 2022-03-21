@@ -12,7 +12,7 @@ class PersonRoleEnum(Enum):
 
 
 # по этим таблицам осуществляется обход и дальнейшая загрузка в elastic
-TABLE_SPECS = [
+FILM_WORK_PIPELINE_TABLE_SPECS = [
     FilmWorkSpec,
     PersonFilmWorkSpec,
     PersonSpec,
