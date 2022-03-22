@@ -1,6 +1,6 @@
 from settings import settings
 
-from etl_components.pipelines import run_film_work_pipeline
+from etl_components.pipelines import run_etl
 from storage.state import State
 from storage.storage import JsonFileStorage
 
@@ -19,4 +19,4 @@ storage = JsonFileStorage('./storage.json')
 state = State(storage)
 
 if __name__ == '__main__':
-    run_film_work_pipeline(dsl, state, BATCH_SIZE)
+    run_etl(dsl, state, BATCH_SIZE)

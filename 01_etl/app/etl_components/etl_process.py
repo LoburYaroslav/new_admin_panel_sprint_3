@@ -15,7 +15,8 @@ from etl_components.models import FilmWorkMergedData, PersonMergedData
 from etl_components.utils import merged_fw_data_template_factory, merged_person_data_template_factory
 from lib.logger import logger
 from postgres_components.constants import PersonRoleEnum
-from postgres_components.table_spec import AbstractPostgresTableSpec, PersonFilmWorkSpec, PersonSpec
+from postgres_components.table_spec import (AbstractPostgresTableSpec, FilmWorkSpec, GenreSpec, PersonFilmWorkSpec,
+                                            PersonSpec)
 
 
 class EtlProcess:
@@ -86,6 +87,9 @@ class EtlProcess:
 
 class EtlFilmWorkProcess(EtlProcess):
     """Класс реализующий ETL процесс для загрузки фильмов"""
+
+    PIPELINE_NAME = 'film_work_pipeline'
+    TARGET_TABLE_SPECS = (FilmWorkSpec, PersonFilmWorkSpec, PersonSpec, GenreSpec)
 
     @staticmethod
     def postgres_enricher(
@@ -177,6 +181,9 @@ class EtlFilmWorkProcess(EtlProcess):
 
 class EtlPersonProcess(EtlProcess):
     """Класс реализующий ETL процесс для загрузки персон"""
+
+    PIPELINE_NAME = 'person_pipeline'
+    TARGET_TABLE_SPECS = (PersonFilmWorkSpec, PersonSpec)
 
     @staticmethod
     def postgres_enricher(
