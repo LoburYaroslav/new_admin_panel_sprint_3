@@ -1,22 +1,36 @@
 {
-  "film_work": {
-    "producer_offset": 0,
-    "enricher_offset": 0,
-    "last_modified_dt": "2022-03-02T00:01:01.024425"
+  "film_work_pipeline": {
+    "film_work": {
+      "producer_offset": 0,
+      "enricher_offset": 0,
+      "last_modified_dt": "1999-03-22T09:31:30.150468"
+    },
+    "person_film_work": {
+      "producer_offset": 0,
+      "enricher_offset": 0,
+      "last_modified_dt": "1999-03-22T09:31:35.660660"
+    },
+    "person": {
+      "producer_offset": 0,
+      "enricher_offset": 0,
+      "last_modified_dt": "1999-03-22T09:31:37.635459"
+    },
+    "genre": {
+      "producer_offset": 0,
+      "enricher_offset": 0,
+      "last_modified_dt": "1999-03-22T09:31:39.776575"
+    }
   },
-  "person_film_work": {
-    "producer_offset": 0,
-    "enricher_offset": 0,
-    "last_modified_dt": "2022-03-02T00:01:01.024425"
-  },
-  "person": {
-    "producer_offset": 0,
-    "enricher_offset": 0,
-    "last_modified_dt": "2022-03-02T00:01:01.024425"
-  },
-  "genre": {
-    "producer_offset": 0,
-    "enricher_offset": 0,
-    "last_modified_dt": "2022-03-02T00:01:01.024425"
+  "person_pipeline": {
+    "person_film_work": {
+      "producer_offset": 0,
+      "enricher_offset": 0,
+      "last_modified_dt": "1999-03-22T09:31:35.660660"
+    },
+    "person": {
+      "producer_offset": 0,
+      "enricher_offset": 0,
+      "last_modified_dt": "1999-03-22T09:31:37.635459"
+    }
   }
 }
