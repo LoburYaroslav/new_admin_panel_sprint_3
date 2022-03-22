@@ -11,11 +11,11 @@ from psycopg2.extensions import connection
 from pydantic import ValidationError
 from settings import settings
 
-from etl_components.models import PgMergedData
-from etl_components.utils import merged_data_template_factory
+from etl_components.models import FilmWorkMergedData, PersonMergedData
+from etl_components.utils import merged_fw_data_template_factory, merged_person_data_template_factory
 from lib.logger import logger
 from postgres_components.constants import PersonRoleEnum
-from postgres_components.table_spec import AbstractPostgresTableSpec
+from postgres_components.table_spec import AbstractPostgresTableSpec, PersonFilmWorkSpec, PersonSpec
 
 
 class EtlProcess:
@@ -23,11 +23,11 @@ class EtlProcess:
 
     @staticmethod
     def postgres_producer(
-            pg_conn: connection,
-            table_spec: AbstractPostgresTableSpec,
-            last_modified_dt: Union[datetime, str],  # либо дата, либо строка с датой в формате iso
-            batch_limit: int,
-            batch_offset: int,
+        pg_conn: connection,
+        table_spec: AbstractPostgresTableSpec,
+        last_modified_dt: Union[datetime, str],  # либо дата, либо строка с датой в формате iso
+        batch_limit: int,
+        batch_offset: int,
     ):
         """Возвращает идентификаторы кинопроизведений связанных с изменившимися сущностями"""
         logger.info(f'RUN postgres_producer for {table_spec.table_name}')
@@ -42,11 +42,11 @@ class EtlProcess:
     @staticmethod
     @abstractmethod
     def postgres_enricher(
-            pg_conn: connection,
-            table_spec: AbstractPostgresTableSpec,
-            modified_row_ids: Tuple[str],
-            batch_limit: int,
-            batch_offset: int,
+        pg_conn: connection,
+        table_spec: AbstractPostgresTableSpec,
+        modified_row_ids: Tuple[str],
+        batch_limit: int,
+        batch_offset: int,
     ):
         """
         Обогащает записи данными из many-to-many таблиц при необходимости
@@ -89,11 +89,11 @@ class EtlFilmWorkProcess(EtlProcess):
 
     @staticmethod
     def postgres_enricher(
-            pg_conn: connection,
-            table_spec: AbstractPostgresTableSpec,
-            modified_row_ids: Tuple[str],
-            batch_limit: int,
-            batch_offset: int,
+        pg_conn: connection,
+        table_spec: AbstractPostgresTableSpec,
+        modified_row_ids: Tuple[str],
+        batch_limit: int,
+        batch_offset: int,
     ):
         """Возвращает film_work.id для измененных записей из таблиц genre и person"""
         logger.info(f'RUN postgres_enricher for {table_spec.table_name}: {len(modified_row_ids)} will be enriched')
@@ -134,12 +134,12 @@ class EtlFilmWorkProcess(EtlProcess):
             cur.execute(query)
 
             raw_data = tuple(dict(i) for i in cur.fetchall())
-            merged_data = defaultdict(merged_data_template_factory)
+            merged_data = defaultdict(merged_fw_data_template_factory)
 
             for item in raw_data:  # todo: тут можно валидировать данные из базы и логировать ошибки
                 fw_id = item['fw_id']
                 try:
-                    valid_item = PgMergedData(**item)
+                    valid_item = FilmWorkMergedData(**item)
                 except ValidationError:
                     logger.exception(f'ValidationError for film {fw_id}')
                     continue
@@ -171,5 +171,69 @@ class EtlFilmWorkProcess(EtlProcess):
                 if valid_item.role == PersonRoleEnum.DIRECTOR.value \
                         and valid_item.full_name not in [name for name in merged_data[fw_id]['director']]:
                     merged_data[fw_id]['director'].append(valid_item.full_name)
+
+            return merged_data.values()
+
+
+class EtlPersonProcess(EtlProcess):
+    """Класс реализующий ETL процесс для загрузки персон"""
+
+    @staticmethod
+    def postgres_enricher(
+        pg_conn: connection,
+        table_spec: Union[PersonFilmWorkSpec, PersonSpec],
+        modified_row_ids: Tuple[str],
+        batch_limit: int,
+        batch_offset: int,
+    ):
+        """Возвращает film_work.id для измененных записей из таблиц genre и person"""
+        logger.info(f'RUN postgres_enricher for {table_spec.table_name}: {len(modified_row_ids)} will be enriched')
+
+        return table_spec.get_person_ids(
+            pg_conn,
+            modified_row_ids=modified_row_ids,
+            limit=batch_limit,
+            offset=batch_offset
+        )
+
+    @staticmethod
+    def postgres_merger(pg_conn: connection, person_ids: Tuple[str]):
+        """Собирает и мержит данные для последующей трансформации и отправки в Elastic"""
+        logger.info(f'RUN postgres_merger: {len(person_ids)} will be merged')
+        with pg_conn.cursor() as cur:
+            query = cur.mogrify(
+                """
+                SELECT
+                    p.id,
+                    pfw.role,
+                    p.full_name,
+                    fw.id as film_id
+                FROM person p
+                LEFT JOIN person_film_work pfw ON pfw.person_id = p.id
+                LEFT JOIN film_work fw ON fw.id = pfw.film_work_id
+
+                WHERE p.id IN %(person_ids)s;
+                """,
+                {'person_ids': person_ids, }
+            )
+            cur.execute(query)
+
+            raw_data = tuple(dict(i) for i in cur.fetchall())
+            merged_data = defaultdict(merged_person_data_template_factory)
+
+            for item in raw_data:
+                person_id = item['id']
+                try:
+                    valid_item = PersonMergedData(**item)
+                except ValidationError:
+                    logger.exception(f'ValidationError for film {person_id}')
+                    continue
+
+                merged_data[person_id]['id'] = person_id
+                merged_data[person_id]['role'] = valid_item.role
+                merged_data[person_id]['full_name'] = valid_item.full_name
+
+                if valid_item.film_id not in merged_data[person_id]['film_ids']:
+                    merged_data[person_id]['film_ids'].append(valid_item.film_id)
 
             return merged_data.values()

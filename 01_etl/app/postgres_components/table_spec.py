@@ -19,11 +19,11 @@ class AbstractPostgresTableSpec(ABC):
     @classmethod
     @abstractmethod
     def get_modified_row_ids(
-            cls,
-            pg_conn: connection,
-            last_modified_dt: datetime,
-            limit: int,
-            offset: int
+        cls,
+        pg_conn: connection,
+        last_modified_dt: datetime,
+        limit: int,
+        offset: int
     ) -> Tuple[str]:
         """
         Находит изменившиеся записи и возвращает их идентификаторы
@@ -37,11 +37,11 @@ class AbstractPostgresTableSpec(ABC):
     @classmethod
     @abstractmethod
     def get_film_work_ids_by_modified_row_ids(
-            cls,
-            pg_conn: connection,
-            modified_row_ids: Tuple[str],
-            limit: int,
-            offset: int
+        cls,
+        pg_conn: connection,
+        modified_row_ids: Tuple[str],
+        limit: int,
+        offset: int
     ) -> Tuple[str]:
         """
         По изменившимся идентификаторам находит идентификаторы кинопроизведений
@@ -60,11 +60,11 @@ class PostgresTableSpecMixin(AbstractPostgresTableSpec):
 
     @classmethod
     def get_modified_row_ids(
-            cls,
-            pg_conn: connection,
-            last_modified_dt: datetime,
-            limit: int,
-            offset: int
+        cls,
+        pg_conn: connection,
+        last_modified_dt: datetime,
+        limit: int,
+        offset: int
     ) -> Tuple[str]:
         with pg_conn.cursor() as cur:
             query = cur.mogrify(
@@ -84,11 +84,11 @@ class PostgresTableSpecMixin(AbstractPostgresTableSpec):
 
     @classmethod
     def get_film_work_ids_by_modified_row_ids(
-            cls,
-            pg_conn: connection,
-            modified_row_ids: Tuple[str],
-            limit: int,
-            offset: int
+        cls,
+        pg_conn: connection,
+        modified_row_ids: Tuple[str],
+        limit: int,
+        offset: int
     ) -> Tuple[str]:
         with pg_conn.cursor() as cur:
             query = cur.mogrify(
@@ -117,59 +117,83 @@ class FilmWorkSpec(PostgresTableSpecMixin):
     # и в дальнейшем обогащении не нуждается
     @classmethod
     def get_film_work_ids_by_modified_row_ids(
-            cls,
-            pg_conn: connection,
-            modified_row_ids: Tuple[str],
-            limit: int,
-            offset: int
+        cls,
+        pg_conn: connection,
+        modified_row_ids: Tuple[str],
+        limit: int,
+        offset: int
     ) -> Tuple[str]:
         return modified_row_ids[offset:offset + limit]
 
 
-class PersonFilmWorkSpec(AbstractPostgresTableSpec):
+class PersonFilmWorkSpec(PostgresTableSpecMixin):
     table_name = 'person_film_work'
-    film_work_id_field: str = 'film_work_id'
+    film_work_id_field = 'film_work_id'
+    person_id_field = 'person_id'
 
-    # переопределил чтобы сразу возвращать id кинопроизведений и не ходить лишний раз в бд
     @classmethod
-    def get_modified_row_ids(
-            cls,
-            pg_conn: connection,
-            last_modified_dt: datetime,
-            limit: int,
-            offset: int
+    def get_film_work_ids_by_modified_row_ids(
+        cls,
+        pg_conn: connection,
+        modified_row_ids: Tuple[str],
+        limit: int,
+        offset: int
     ) -> Tuple[str]:
         with pg_conn.cursor() as cur:
             query = cur.mogrify(
                 f"""
                 SELECT {cls.film_work_id_field}
                 FROM {cls.table_name}
-                WHERE modified >= %(modified)s
-                ORDER BY modified, id
+                WHERE {cls.table_name}.id in %(modified)s
+                ORDER BY {cls.table_name}.modified, {cls.table_name}.id
                 OFFSET %(offset)s
                 LIMIT %(limit)s;
                 """,
-                {'modified': last_modified_dt, 'limit': limit, 'offset': offset}
+                {'modified': modified_row_ids, 'limit': limit, 'offset': offset}
             )
             cur.execute(query)
 
             return tuple(i[0] for i in cur.fetchall())
 
     @classmethod
-    def get_film_work_ids_by_modified_row_ids(
-            cls,
-            pg_conn: connection,
-            modified_row_ids: Tuple[str],
-            limit: int,
-            offset: int
-    ) -> Tuple[str]:
-        return modified_row_ids[offset:offset + limit]
+    def get_person_ids(
+        cls,
+        pg_conn: connection,
+        modified_row_ids: Tuple[str],
+        limit: int,
+        offset: int
+    ):
+        with pg_conn.cursor() as cur:
+            query = cur.mogrify(
+                f"""
+                SELECT {cls.person_id_field}
+                FROM {cls.table_name}
+                WHERE {cls.table_name}.id in %(modified)s
+                ORDER BY {cls.table_name}.modified, {cls.table_name}.id
+                OFFSET %(offset)s
+                LIMIT %(limit)s;
+                """,
+                {'modified': modified_row_ids, 'limit': limit, 'offset': offset}
+            )
+            cur.execute(query)
+
+            return tuple(i[0] for i in cur.fetchall())
 
 
 class PersonSpec(PostgresTableSpecMixin):
     table_name = 'person'
     join_clause = 'JOIN person_film_work ON person_film_work.person_id = person.id'
     film_work_id_field = 'film_work_id'
+
+    @classmethod
+    def get_person_ids(
+        cls,
+        pg_conn: connection,
+        modified_row_ids: Tuple[str],
+        limit: int,
+        offset: int
+    ):
+        return modified_row_ids[offset:offset + limit]
 
 
 class GenreSpec(PostgresTableSpecMixin):
