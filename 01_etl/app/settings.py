@@ -12,7 +12,6 @@ class Settings(BaseSettings):
 
     ES_HOST: str = '127.0.0.1'
     ES_PORT: Union[int, str] = 9200
-    ES_INDEX: str = 'movies'
 
 
 settings = Settings(_env_file='.env', _env_file_encoding='utf-8')

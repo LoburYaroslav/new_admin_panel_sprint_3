@@ -2,7 +2,6 @@ from datetime import datetime
 
 import psycopg2
 from psycopg2.extras import DictCursor
-from settings import settings
 
 from etl_components.etl_process import EtlFilmWorkProcess, EtlPersonProcess
 from lib.logger import logger
@@ -75,7 +74,7 @@ def run_etl(dsl: dict, state: State, batch_size):
                                 break
 
                             merged_data = pipeline.postgres_merger(pg_conn, film_work_ids)
-                            transformed_data = pipeline.transform(merged_data, settings.ES_INDEX)
+                            transformed_data = pipeline.transform(merged_data, pipeline.INDEX_NAME)
                             pipeline.elasticsearch_loader(transformed_data)
 
                             update_storage_data_in_pipeline_table(

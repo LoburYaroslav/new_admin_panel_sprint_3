@@ -89,6 +89,7 @@ class EtlFilmWorkProcess(EtlProcess):
     """Класс реализующий ETL процесс для загрузки фильмов"""
 
     PIPELINE_NAME = 'film_work_pipeline'
+    INDEX_NAME = 'movies'
     TARGET_TABLE_SPECS = (FilmWorkSpec, PersonFilmWorkSpec, PersonSpec, GenreSpec)
 
     @staticmethod
@@ -183,6 +184,7 @@ class EtlPersonProcess(EtlProcess):
     """Класс реализующий ETL процесс для загрузки персон"""
 
     PIPELINE_NAME = 'person_pipeline'
+    INDEX_NAME = 'persons'
     TARGET_TABLE_SPECS = (PersonFilmWorkSpec, PersonSpec)
 
     @staticmethod
