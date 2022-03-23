@@ -239,7 +239,7 @@ class EtlPersonProcess(EtlProcess):
                     continue
 
                 merged_data[person_id]['id'] = person_id
-                merged_data[person_id]['role'] = valid_item.role
+                merged_data[person_id]['role'] = valid_item.role  # todo: сделать массивом
                 merged_data[person_id]['full_name'] = valid_item.full_name
 
                 if valid_item.film_id not in merged_data[person_id]['film_ids']:
