@@ -141,7 +141,7 @@ class EtlFilmWorkProcess(EtlProcess):
             raw_data = tuple(dict(i) for i in cur.fetchall())
             merged_data = defaultdict(merged_fw_data_template_factory)
 
-            for item in raw_data:  # todo: тут можно валидировать данные из базы и логировать ошибки
+            for item in raw_data:
                 fw_id = item['fw_id']
                 try:
                     valid_item = FilmWorkMergedData(**item)
@@ -158,7 +158,7 @@ class EtlFilmWorkProcess(EtlProcess):
                     merged_data[fw_id]['genre'].append(valid_item.name)
 
                 if valid_item.role == PersonRoleEnum.ACTOR.value \
-                        and valid_item.id not in [i['id'] for i in merged_data[fw_id]['actors']]:
+                    and valid_item.id not in [i['id'] for i in merged_data[fw_id]['actors']]:
                     merged_data[fw_id]['actors'].append({
                         'id': valid_item.id,
                         'name': valid_item.full_name
@@ -166,7 +166,7 @@ class EtlFilmWorkProcess(EtlProcess):
                     merged_data[fw_id]['actors_names'].append(valid_item.full_name)
 
                 if valid_item.role == PersonRoleEnum.WRITER.value \
-                        and valid_item.id not in [i['id'] for i in merged_data[fw_id]['writers']]:
+                    and valid_item.id not in [i['id'] for i in merged_data[fw_id]['writers']]:
                     merged_data[fw_id]['writers'].append({
                         'id': valid_item.id,
                         'name': valid_item.full_name
@@ -174,7 +174,7 @@ class EtlFilmWorkProcess(EtlProcess):
                     merged_data[fw_id]['writers_names'].append(valid_item.full_name)
 
                 if valid_item.role == PersonRoleEnum.DIRECTOR.value \
-                        and valid_item.full_name not in [name for name in merged_data[fw_id]['director']]:
+                    and valid_item.full_name not in [name for name in merged_data[fw_id]['director']]:
                     merged_data[fw_id]['director'].append(valid_item.full_name)
 
             return merged_data.values()
@@ -239,8 +239,10 @@ class EtlPersonProcess(EtlProcess):
                     continue
 
                 merged_data[person_id]['id'] = person_id
-                merged_data[person_id]['role'] = valid_item.role  # todo: сделать массивом
                 merged_data[person_id]['full_name'] = valid_item.full_name
+
+                if valid_item.role not in merged_data[person_id]['roles']:
+                    merged_data[person_id]['roles'].append(valid_item.role)
 
                 if valid_item.film_id not in merged_data[person_id]['film_ids']:
                     merged_data[person_id]['film_ids'].append(valid_item.film_id)

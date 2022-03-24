@@ -18,7 +18,7 @@ def merged_person_data_template_factory():
     template = {
         "id": None,
         "full_name": None,
-        "role": None,
+        "roles": [],
         "film_ids": []
     }
     return template
