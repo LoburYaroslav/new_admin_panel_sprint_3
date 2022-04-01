@@ -22,3 +22,11 @@ def merged_person_data_template_factory():
         "film_ids": []
     }
     return template
+
+
+def merged_genre_data_template_factory():
+    template = {
+        "id": None,
+        "name": None,
+    }
+    return template
