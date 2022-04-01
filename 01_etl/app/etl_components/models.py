@@ -21,3 +21,8 @@ class PersonMergedData(BaseModel):
     role: Optional[str]
     full_name: Optional[str]
     film_id: Optional[UUID]
+
+
+class GenreMergedData(BaseModel):
+    id: UUID
+    name: str

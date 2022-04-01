@@ -3,7 +3,7 @@ from datetime import datetime
 import psycopg2
 from psycopg2.extras import DictCursor
 
-from etl_components.etl_process import EtlFilmWorkProcess, EtlPersonProcess
+from etl_components.etl_process import EtlFilmWorkProcess, EtlPersonProcess, EtlGenreProcess
 from lib.logger import logger
 from lib.utils import backoff
 from storage.state import State
@@ -12,6 +12,7 @@ from storage.use_cases import update_storage_data_in_pipeline_table
 PIPELINES = [
     EtlFilmWorkProcess,
     EtlPersonProcess,
+    EtlGenreProcess,
 ]
 
 

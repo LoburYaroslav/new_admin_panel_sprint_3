@@ -200,3 +200,13 @@ class GenreSpec(PostgresTableSpecMixin):
     table_name = 'genre'
     join_clause = 'JOIN genre_film_work ON genre_film_work.genre_id = genre.id'
     film_work_id_field = 'film_work_id'
+
+    @classmethod
+    def get_genre_ids(
+        cls,
+        pg_conn: connection,
+        modified_row_ids: Tuple[str],
+        limit: int,
+        offset: int
+    ):
+        return modified_row_ids[offset:offset + limit]

@@ -11,8 +11,12 @@ from psycopg2.extensions import connection
 from pydantic import ValidationError
 from settings import settings
 
-from etl_components.models import FilmWorkMergedData, PersonMergedData
-from etl_components.utils import merged_fw_data_template_factory, merged_person_data_template_factory
+from etl_components.models import FilmWorkMergedData, PersonMergedData, GenreMergedData
+from etl_components.utils import (
+    merged_fw_data_template_factory,
+    merged_person_data_template_factory,
+    merged_genre_data_template_factory,
+)
 from lib.logger import logger
 from postgres_components.constants import PersonRoleEnum
 from postgres_components.table_spec import (AbstractPostgresTableSpec, FilmWorkSpec, GenreSpec, PersonFilmWorkSpec,
@@ -246,5 +250,62 @@ class EtlPersonProcess(EtlProcess):
 
                 if valid_item.film_id not in merged_data[person_id]['film_ids']:
                     merged_data[person_id]['film_ids'].append(valid_item.film_id)
+
+            return merged_data.values()
+
+
+class EtlGenreProcess(EtlProcess):
+    """Класс реализующий ETL процесс для загрузки жанров"""
+
+    PIPELINE_NAME = 'genre_pipeline'
+    INDEX_NAME = 'genres'
+    TARGET_TABLE_SPECS = (GenreSpec, )
+
+    @staticmethod
+    def postgres_enricher(
+        pg_conn: connection,
+        table_spec: GenreSpec,
+        modified_row_ids: Tuple[str],
+        batch_limit: int,
+        batch_offset: int,
+    ):
+        """Возвращает film_work.id для измененных записей из таблиц genre и person"""
+        logger.info(f'RUN postgres_enricher for {table_spec.table_name}: {len(modified_row_ids)} will be enriched')
+
+        return table_spec.get_genre_ids(
+            pg_conn,
+            modified_row_ids=modified_row_ids,
+            limit=batch_limit,
+            offset=batch_offset
+        )
+
+    @staticmethod
+    def postgres_merger(pg_conn: connection, genres_id: Tuple[str]):
+        """Собирает и мержит данные для последующей трансформации и отправки в Elastic"""
+        logger.info(f'RUN postgres_merger: {len(genres_id)} will be merged')
+        with pg_conn.cursor() as cur:
+            query = cur.mogrify(
+                """
+                SELECT id, name
+                FROM genre p
+                WHERE p.id IN %(genres_id)s;
+                """,
+                {'genres_id': genres_id, }
+            )
+            cur.execute(query)
+
+            raw_data = tuple(dict(i) for i in cur.fetchall())
+            merged_data = defaultdict(merged_genre_data_template_factory)
+
+            for item in raw_data:
+                genre_id = item['id']
+                try:
+                    valid_item = GenreMergedData(**item)
+                except ValidationError:
+                    logger.exception(f'ValidationError for film {genre_id}')
+                    continue
+
+                merged_data[genre_id]['id'] = genre_id
+                merged_data[genre_id]['name'] = valid_item.name
 
             return merged_data.values()
