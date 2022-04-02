@@ -32,5 +32,12 @@
       "enricher_offset": 0,
       "last_modified_dt": "1999-03-22T09:31:37.635459"
     }
+  },
+  "genre_pipeline": {
+    "genre": {
+      "producer_offset": 0,
+      "enricher_offset": 0,
+      "last_modified_dt": "1999-04-01T05:37:22.518089"
+    }
   }
 }
