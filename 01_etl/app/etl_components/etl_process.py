@@ -11,12 +11,9 @@ from psycopg2.extensions import connection
 from pydantic import ValidationError
 from settings import settings
 
-from etl_components.models import FilmWorkMergedData, PersonMergedData, GenreMergedData
-from etl_components.utils import (
-    merged_fw_data_template_factory,
-    merged_person_data_template_factory,
-    merged_genre_data_template_factory,
-)
+from etl_components.models import FilmWorkMergedData, GenreMergedData, PersonMergedData
+from etl_components.utils import (merged_fw_data_template_factory, merged_genre_data_template_factory,
+                                  merged_person_data_template_factory)
 from lib.logger import logger
 from postgres_components.constants import PersonRoleEnum
 from postgres_components.table_spec import (AbstractPostgresTableSpec, FilmWorkSpec, GenreSpec, PersonFilmWorkSpec,
@@ -130,7 +127,8 @@ class EtlFilmWorkProcess(EtlProcess):
                     pfw.role,
                     p.id,
                     p.full_name,
-                    g.name
+                    g.id as genre_id,
+                    g.name as genre_name
                 FROM film_work fw
                 LEFT JOIN person_film_work pfw ON pfw.film_work_id = fw.id
                 LEFT JOIN person p ON p.id = pfw.person_id
@@ -158,8 +156,11 @@ class EtlFilmWorkProcess(EtlProcess):
                 merged_data[fw_id]['title'] = valid_item.title
                 merged_data[fw_id]['description'] = valid_item.description
 
-                if valid_item.name not in merged_data[fw_id]['genre']:
-                    merged_data[fw_id]['genre'].append(valid_item.name)
+                if valid_item.genre_id not in [i['id'] for i in merged_data[fw_id]['genres']]:
+                    merged_data[fw_id]['genres'].append({
+                        'id': valid_item.genre_id,
+                        'name': valid_item.genre_name,
+                    })
 
                 if valid_item.role == PersonRoleEnum.ACTOR.value \
                     and valid_item.id not in [i['id'] for i in merged_data[fw_id]['actors']]:
@@ -259,7 +260,7 @@ class EtlGenreProcess(EtlProcess):
 
     PIPELINE_NAME = 'genre_pipeline'
     INDEX_NAME = 'genres'
-    TARGET_TABLE_SPECS = (GenreSpec, )
+    TARGET_TABLE_SPECS = (GenreSpec,)
 
     @staticmethod
     def postgres_enricher(

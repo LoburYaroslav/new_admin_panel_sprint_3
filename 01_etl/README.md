@@ -109,8 +109,18 @@ curl -XPUT http://127.0.0.1:9200/movies -H 'Content-Type: application/json' -d'
       "imdb_rating": {
         "type": "float"
       },
-      "genre": {
-        "type": "keyword"
+      "genres": {
+        "type": "nested",
+        "dynamic": "strict",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ru_en"
+          }
+        }
       },
       "title": {
         "type": "text",
@@ -241,6 +251,7 @@ curl -XPUT http://127.0.0.1:9200/persons -H 'Content-Type: application/json' -d'
 ```
 
 ### genres
+
 ```shell
 curl -XPUT http://127.0.0.1:9200/genres -H 'Content-Type: application/json' -d'
 {

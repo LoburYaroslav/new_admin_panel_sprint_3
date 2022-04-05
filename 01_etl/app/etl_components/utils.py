@@ -2,7 +2,7 @@ def merged_fw_data_template_factory():
     template = {
         "id": None,
         "imdb_rating": None,
-        "genre": [],
+        "genres": [],
         "title": None,
         "description": None,
         "director": [],

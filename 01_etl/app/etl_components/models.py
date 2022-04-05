@@ -13,7 +13,8 @@ class FilmWorkMergedData(BaseModel):
     type: Optional[str]
     role: Optional[str]
     full_name: Optional[str]
-    name: Optional[str]
+    genre_id: Optional[str]
+    genre_name: Optional[str]
 
 
 class PersonMergedData(BaseModel):
