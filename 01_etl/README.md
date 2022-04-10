@@ -172,6 +172,19 @@ curl -XPUT http://127.0.0.1:9200/movies -H 'Content-Type: application/json' -d'
             "analyzer": "ru_en"
           }
         }
+      },
+      "directors": {
+        "type": "nested",
+        "dynamic": "strict",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ru_en"
+          }
+        }
       }
     }
   }
