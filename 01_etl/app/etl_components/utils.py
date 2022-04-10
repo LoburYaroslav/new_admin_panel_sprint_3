@@ -9,7 +9,8 @@ def merged_fw_data_template_factory():
         "actors_names": [],
         "writers_names": [],
         "actors": [],
-        "writers": []
+        "writers": [],
+        "directors": [],
     }
     return template
 
