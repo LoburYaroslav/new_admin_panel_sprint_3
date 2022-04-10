@@ -179,7 +179,11 @@ class EtlFilmWorkProcess(EtlProcess):
                     merged_data[fw_id]['writers_names'].append(valid_item.full_name)
 
                 if valid_item.role == PersonRoleEnum.DIRECTOR.value \
-                    and valid_item.full_name not in [name for name in merged_data[fw_id]['director']]:
+                    and valid_item.id not in [i['id'] for i in merged_data[fw_id]['directors']]:
+                    merged_data[fw_id]['directors'].append({
+                        'id': valid_item.id,
+                        'name': valid_item.full_name
+                    })
                     merged_data[fw_id]['director'].append(valid_item.full_name)
 
             return merged_data.values()
