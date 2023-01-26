@@ -82,7 +82,7 @@ class EtlProcess:
         """Отправляет запрос в Elastic"""
         logger.info(f'RUN elasticsearch_loader: {len(actions)} will be send')
 
-        es_client = Elasticsearch(f'{settings.ES_HOST}:{settings.ES_PORT}')
+        es_client = Elasticsearch(f'http://{settings.ES_HOST}:{settings.ES_PORT}')
         helpers.bulk(es_client, actions)
 
 
